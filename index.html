@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Futuristic Tetris</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      -webkit-touch-callout: none; /* Disable callout */
+      -webkit-user-select: none; /* Disable text selection */
+      user-select: none; /* Disable text selection */
+    }
+
+    body {
+      background: black;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-image: url('https://raw.githubusercontent.com/S0-C4lled-RYO/PROJEKT-KLASSIKAL/main/a-beautiful-cyberpunk-city-in-night-with_k6eRYYtaRkmdN415_b_BLw_9NwrjupXSjeVj4Rn5g-gYw.jpeg');
+      background-size: cover;
+      background-position: center;
+    }
+
+    canvas {
+      border: 2px solid rgba(0, 255, 255, 0.5); /* Neon border for the playfield */
+      max-width: 100%;
+      max-height: 60vh; /* Adjusted to fit score text */
+      background: #001f3f; /* Deep dark blue for the playfield */
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.7); /* Glow effect */
+    }
+
+    .controls {
+      display: grid;
+      grid-template-areas:
+        ". rotate ."
+        "left . right"
+        ". drop .";
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .controls button {
+      padding: 10px;
+      font-size: 16px; /* Smaller buttons */
+      background: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+      color: #00ffcc; /* Neon cyan */
+      border: 2px solid #00ffcc; /* Neon cyan border */
+      border-radius: 10px;
+      cursor: pointer;
+      outline: none; /* Remove outline */
+      -webkit-tap-highlight-color: transparent; /* Disable tap highlight */
+      transition: background 0.3s, transform 0.2s;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.7); /* Glow effect */
+    }
+
+    .controls button:active {
+      background: #00ffcc; /* Neon cyan */
+      color: black;
+      transform: scale(0.95);
+    }
+
+    #rotate { grid-area: rotate; }
+    #left { grid-area: left; }
+    #right { grid-area: right; }
+    #drop { grid-area: drop; }
+
+    #pause {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px;
+      font-size: 16px;
+      background: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+      color: #ff00ff; /* Neon pink */
+      border: 2px solid #ff00ff; /* Neon pink border */
+      border-radius: 5px;
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.3s, transform 0.2s;
+      box-shadow: 0 0 10px rgba(255, 0, 255, 0.7); /* Glow effect */
+    }
+
+    #pause:active {
+      background: #ff00ff; /* Neon pink */
+      color: black;
+      transform: scale(0.95);
+    }
+
+    #reset {
+      position: absolute;
+      top: 60px;
+      left: 10px;
+      padding: 10px;
+      font-size: 16px;
+      background: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+      color: #ff00ff; /* Neon pink */
+      border: 2px solid #ff00ff; /* Neon pink border */
+      border-radius: 5px;
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      display: none; /* Hidden by default */
+      transition: background 0.3s, transform 0.2s;
+      box-shadow: 0 0 10px rgba(255, 0, 255, 0.7); /* Glow effect */
+    }
+
+    #reset:active {
+      background: #ff00ff; /* Neon pink */
+      color: black;
+      transform: scale(0.95);
+    }
+
+    #mute {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 10px;
+      font-size: 16px;
+      background: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+      color: #ff00ff; /* Neon pink */
+      border: 2px solid #ff00ff; /* Neon pink border */
+      border-radius: 5px;
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.3s, transform 0.2s;
+      box-shadow: 0 0 10px rgba(255, 0, 255, 0.7); /* Glow effect */
+    }
+
+    #mute:active {
+      background: #ff00ff; /* Neon pink */
+      color: black;
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body>
+  <canvas width="320" height="640" id="game"></canvas>
+  <div class="controls">
+    <button id="left">←</button>
+    <button id="rotate">↻</button>
+    <button id="right">→</button>
+    <button id="drop">↓</button>
+  </div>
+  <button id="pause">Pause</button>
+  <button id="reset">Reset</button>
+  <button id="mute">Mute</button>
+  <script>
+    // Background music
+    const bgMusic = new Audio('https://raw.githubusercontent.com/S0-C4lled-RYO/PROJEKT-KLASSIKAL/main/Nostalgic%20Whirl%20ext%20v2.mp3');
+    bgMusic.loop = true; // Loop the music
+    bgMusic.volume = 0.5; // Set volume to 50%
+    bgMusic.play(); // Start playing automatically
+
+    // Sound effects
+    const blockCollisionSound = new Audio('https://raw.githubusercontent.com/S0-C4lled-RYO/PROJEKT-KLASSIKAL/main/-clinking-sound-of-two-metallic-blocks-gently-colliding-1_Lsbe3pb6.mp3');
+    const lineClearSound = new Audio('https://github.com/S0-C4lled-RYO/PROJEKT-KLASSIKAL/raw/main/WWWWWWWWW.mp3');
+    const gameOverSound = new Audio('https://github.com/S0-C4lled-RYO/PROJEKT-KLASSIKAL/raw/main/LOSING.mp3');
+
+    // Increase volume of SFX
+    blockCollisionSound.volume = 1.0;
+    lineClearSound.volume = 1.0;
+    gameOverSound.volume = 1.0;
+
+    // Mute button functionality
+    const muteButton = document.getElementById('mute');
+    let isMuted = false;
+
+    muteButton.addEventListener('click', () => {
+      isMuted = !isMuted;
+      bgMusic.muted = isMuted;
+      muteButton.textContent = isMuted ? 'Unmute' : 'Mute';
+    });
+
+    // Tetromino shapes
+    const tetrominos = {
+      'I': [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+      'J': [[1,0,0], [1,1,1], [0,0,0]],
+      'L': [[0,0,1], [1,1,1], [0,0,0]],
+      'O': [[1,1], [1,1]],
+      'S': [[0,1,1], [1,1,0], [0,0,0]],
+      'Z': [[1,1,0], [0,1,1], [0,0,0]],
+      'T': [[0,1,0], [1,1,1], [0,0,0]]
+    };
+
+    // https://tetris.fandom.com/wiki/Tetris_Guideline
+
+    // get a random integer between the range of [min,max]
+    function getRandomInt(min, max) {
+      min = Math.ceil(min);
+      max = Math.floor(max);
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    // generate a new tetromino sequence
+    function generateSequence() {
+      const sequence = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
+      while (sequence.length) {
+        const rand = getRandomInt(0, sequence.length - 1);
+        const name = sequence.splice(rand, 1)[0];
+        tetrominoSequence.push(name);
+      }
+    }
+
+    // get the next tetromino in the sequence
+    function getNextTetromino() {
+      if (tetrominoSequence.length === 0) {
+        generateSequence();
+      }
+      const name = tetrominoSequence.pop();
+      const matrix = tetrominos[name];
+      const col = playfield[0].length / 2 - Math.ceil(matrix[0].length / 2);
+      const row = name === 'I' ? -1 : -2;
+      return {
+        name: name,
+        matrix: matrix,
+        row: row,
+        col: col
+      };
+    }
+
+    // rotate an NxN matrix 90deg
+    function rotate(matrix) {
+      const N = matrix.length - 1;
+      const result = matrix.map((row, i) =>
+        row.map((val, j) => matrix[N - j][i])
+      );
+      return result;
+    }
+
+    // check to see if the new matrix/row/col is valid
+    function isValidMove(matrix, cellRow, cellCol) {
+      for (let row = 0; row < matrix.length; row++) {
+        for (let col = 0; col < matrix[row].length; col++) {
+          if (matrix[row][col] && (
+              cellCol + col < 0 ||
+              cellCol + col >= playfield[0].length ||
+              cellRow + row >= playfield.length ||
+              playfield[cellRow + row][cellCol + col])
+            ) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    // place the tetromino on the playfield
+    function placeTetromino() {
+      for (let row = 0; row < tetromino.matrix.length; row++) {
+        for (let col = 0; col < tetromino.matrix[row].length; col++) {
+          if (tetromino.matrix[row][col]) {
+            if (tetromino.row + row < 0) {
+              gameOverSound.play();
+              return showGameOver();
+            }
+            playfield[tetromino.row + row][tetromino.col + col] = tetromino.name;
+            blockCollisionSound.currentTime = 0; // Reset sound to start
+            blockCollisionSound.play(); // Play block collision sound
+          }
+        }
+      }
+
+      // check for line clears
+      for (let row = playfield.length - 1; row >= 0; ) {
+        if (playfield[row].every(cell => !!cell)) {
+          for (let r = row; r >= 0; r--) {
+            for (let c = 0; c < playfield[r].length; c++) {
+              playfield[r][c] = playfield[r-1][c];
+            }
+          }
+          score += 100;
+          lineClearSound.currentTime = 0; // Reset sound to start
+          lineClearSound.play(); // Play line clear sound
+        } else {
+          row--;
+        }
+      }
+
+      tetromino = getNextTetromino();
+    }
+
+    // show the game over screen
+    function showGameOver() {
+      cancelAnimationFrame(rAF);
+      gameOver = true;
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('tetrisHighScore', highScore);
+      }
+
+      context.fillStyle = 'black';
+      context.globalAlpha = 0.75;
+      context.fillRect(0, canvas.height / 2 - 30, canvas.width, 60);
+
+      context.globalAlpha = 1;
+      context.fillStyle = 'white';
+      context.font = '36px monospace';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('GAME OVER!', canvas.width / 2, canvas.height / 2);
+
+      // Show reset button
+      document.getElementById('reset').style.display = 'block';
+    }
+
+    const canvas = document.getElementById('game');
+    const context = canvas.getContext('2d');
+    const grid = 32;
+    const tetrominoSequence = [];
+    const playfield = [];
+
+    // populate the empty state
+    for (let row = -2; row < 20; row++) {
+      playfield[row] = [];
+      for (let col = 0; col < 10; col++) {
+        playfield[row][col] = 0;
+      }
+    }
+
+    // Neon block colors
+    const colors = {
+      'I': '#00ffff', // Neon cyan
+      'O': '#ffff00', // Neon yellow
+      'T': '#ff00ff', // Neon pink
+      'S': '#00ff00', // Neon green
+      'Z': '#ff0000', // Neon red
+      'J': '#0000ff', // Neon blue
+      'L': '#ffa500'  // Neon orange
+    };
+
+    let count = 0;
+    let tetromino = getNextTetromino();
+    let rAF = null;
+    let gameOver = false;
+    let paused = false;
+    let score = 0;
+    let highScore = localStorage.getItem('tetrisHighScore') || 0;
+
+    // game loop
+    function loop() {
+      if (paused || gameOver) return;
+
+      rAF = requestAnimationFrame(loop);
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      // draw the playfield
+      for (let row = 0; row < 20; row++) {
+        for (let col = 0; col < 10; col++) {
+          if (playfield[row][col]) {
+            context.fillStyle = colors[playfield[row][col]];
+            context.fillRect(col * grid, row * grid, grid-1, grid-1);
+
+            // Add glow effect
+            context.shadowBlur = 20;
+            context.shadowColor = colors[playfield[row][col]];
+          }
+        }
+      }
+
+      // Reset shadow settings
+      context.shadowBlur = 0;
+      context.shadowColor = 'transparent';
+
+      // draw the active tetromino
+      if (tetromino) {
+        if (++count > 35) {
+          tetromino.row++;
+          count = 0;
+
+          if (!isValidMove(tetromino.matrix, tetromino.row, tetromino.col)) {
+            tetromino.row--;
+            placeTetromino();
+          }
+        }
+
+        context.fillStyle = colors[tetromino.name];
+        for (let row = 0; row < tetromino.matrix.length; row++) {
+          for (let col = 0; col < tetromino.matrix[row].length; col++) {
+            if (tetromino.matrix[row][col]) {
+              context.fillRect((tetromino.col + col) * grid, (tetromino.row + row) * grid, grid-1, grid-1);
+
+              // Add glow effect
+              context.shadowBlur = 20;
+              context.shadowColor = colors[tetromino.name];
+            }
+          }
+        }
+      }
+
+      // Reset shadow settings
+      context.shadowBlur = 0;
+      context.shadowColor = 'transparent';
+
+      // draw the score and high score
+      context.fillStyle = '#00ffcc'; /* Neon cyan */
+      context.font = '18px monospace';
+      context.textAlign = 'left';
+      context.textBaseline = 'top';
+      context.fillText('Score: ' + score, 10, 10);
+      context.fillText('High Score: ' + highScore, 10, 30);
+    }
+
+    // keyboard controls
+    document.addEventListener('keydown', function(e) {
+      if (gameOver || paused) return;
+
+      if (e.which === 37) { // left
+        moveLeft();
+      } else if (e.which === 39) { // right
+        moveRight();
+      } else if (e.which === 38) { // rotate
+        rotateTetromino();
+      } else if (e.which === 40) { // drop
+        hardDrop();
+      } else if (e.which === 80) { // P key for pause
+        togglePause();
+      }
+    });
+
+    // touch controls (tap-to-move)
+    document.getElementById('left').addEventListener('click', moveLeft);
+    document.getElementById('right').addEventListener('click', moveRight);
+    document.getElementById('rotate').addEventListener('click', rotateTetromino);
+    document.getElementById('drop').addEventListener('click', hardDrop);
+
+    // pause functionality
+    document.getElementById('pause').addEventListener('click', togglePause);
+
+    // reset functionality
+    document.getElementById('reset').addEventListener('click', resetGame);
+
+    function moveLeft() {
+      if (gameOver || paused) return;
+      const col = tetromino.col - 1;
+      if (isValidMove(tetromino.matrix, tetromino.row, col)) {
+        tetromino.col = col;
+      }
+    }
+
+    function moveRight() {
+      if (gameOver || paused) return;
+      const col = tetromino.col + 1;
+      if (isValidMove(tetromino.matrix, tetromino.row, col)) {
+        tetromino.col = col;
+      }
+    }
+
+    function rotateTetromino() {
+      if (gameOver || paused) return;
+      const matrix = rotate(tetromino.matrix);
+      if (isValidMove(matrix, tetromino.row, tetromino.col)) {
+        tetromino.matrix = matrix;
+      }
+    }
+
+    function hardDrop() {
+      if (gameOver || paused) return;
+      while (isValidMove(tetromino.matrix, tetromino.row + 1, tetromino.col)) {
+        tetromino.row++;
+      }
+      placeTetromino();
+    }
+
+    function togglePause() {
+      paused = !paused;
+      document.getElementById('pause').textContent = paused ? 'Resume' : 'Pause';
+      if (!paused) loop();
+    }
+
+    function resetGame() {
+      // Reset game state
+      for (let row = -2; row < 20; row++) {
+        for (let col = 0; col < 10; col++) {
+          playfield[row][col] = 0;
+        }
+      }
+      tetrominoSequence.length = 0;
+      tetromino = getNextTetromino();
+      score = 0;
+      gameOver = false;
+      paused = false;
+      document.getElementById('reset').style.display = 'none';
+      document.getElementById('pause').textContent = 'Pause';
+      loop();
+    }
+
+    // start the game
+    rAF = requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
